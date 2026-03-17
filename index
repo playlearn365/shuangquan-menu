@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>雙全幼兒園 餐點表生成系統</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<!-- SheetJS for Excel export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* ── 設計系統 ── */
+:root {
+  --ink: #1a1612; --ink-2: #4a3f35; --ink-3: #8a7b6e;
+  --paper: #fdf8f2; --paper-2: #f5ede0; --paper-3: #ede3d3;
+  --accent: #8b3a0f; --accent-2: #c4621e; --accent-pale: #f9ead8;
+  --green: #2d6b3a; --green-pale: #e5f3e8;
+  --gold: #a67c00; --gold-pale: #fef9e0;
+  --border: rgba(139,90,60,0.18);
+  --radius: 10px; --radius-lg: 16px;
+  --shadow: 0 2px 16px rgba(90,50,20,0.08);
+  --shadow-lg: 0 8px 40px rgba(90,50,20,0.12);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 14px;
+  line-height: 1.65;
+  min-height: 100vh;
+}
+
+/* ── 頁首 ── */
+.header {
+  background: var(--ink);
+  padding: 0 40px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 3px solid var(--accent);
+}
+.header-logo {
+  width: 40px; height: 40px;
+  background: var(--accent);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Noto Serif TC', serif;
+  font-size: 16px; font-weight: 700;
+  color: var(--paper);
+  flex-shrink: 0;
+  border: 1.5px solid var(--accent-2);
+}
+.header h1 {
+  font-family: 'Noto Serif TC', serif;
+  font-size: 17px; font-weight: 600;
+  color: var(--paper);
+  letter-spacing: 2px;
+}
+.header p { font-size: 11px; color: #a09080; letter-spacing: 1px; }
+
+/* ── 主要容器 ── */
+.main { max-width: 1100px; margin: 0 auto; padding: 32px 20px 60px; }
+
+/* ── 控制面板 ── */
+.panel {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px 28px;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow);
+}
+.panel-title {
+  font-family: 'Noto Serif TC', serif;
+  font-size: 12px; font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--paper-3);
+  display: flex; align-items: center; gap: 10px;
+}
+.panel-title::before {
+  content: ''; width: 4px; height: 16px;
+  background: var(--accent); border-radius: 2px; display: block;
+}
+
+/* ── 表單控件 ── */
+.ctrl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: 16px; align-items: end; }
+.ctrl label { display: block; font-size: 12px; color: var(--ink-2); font-weight: 500; margin-bottom: 6px; letter-spacing: .4px; }
+select {
+  width: 100%; padding: 9px 32px 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 13px;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238a7b6e' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  cursor: pointer;
+  transition: border-color .15s, box-shadow .15s;
+}
+select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(139,58,15,.1); }
+
+/* ── 按鈕 ── */
+.btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+.btn {
+  padding: 10px 22px;
+  border-radius: var(--radius);
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 13px; font-weight: 500;
+  cursor: pointer; border: none;
+  transition: all .15s;
+  letter-spacing: .5px;
+  display: inline-flex; align-items: center; gap: 8px;
+  white-space: nowrap;
+}
+.btn-primary { background: var(--accent); color: white; }
+.btn-primary:hover { background: var(--accent-2); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(139,58,15,.3); }
+.btn-primary:active { transform: translateY(0); }
+.btn-excel { background: #1d7245; color: white; }
+.btn-excel:hover { background: #22895a; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(29,114,69,.3); }
+.btn-ghost { background: white; color: var(--ink); border: 1px solid var(--border); }
+.btn-ghost:hover { background: var(--paper-2); border-color: var(--accent); color: var(--accent); }
+.btn:disabled { opacity: .4; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+
+/* ── 狀態列 ── */
+.status { display: none; padding: 11px 16px; border-radius: var(--radius); font-size: 13px; margin-bottom: 16px; align-items: center; gap: 10px; }
+.status.show { display: flex; }
+.status-loading { background: var(--gold-pale); color: var(--gold); border: 1px solid #e8d680; }
+.status-success { background: var(--green-pale); color: var(--green); border: 1px solid #a8d8b0; }
+.status-error   { background: #fde8e8; color: #8b2020; border: 1px solid #e0b0b0; }
+.spinner { width: 15px; height: 15px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── 菜單包裝 ── */
+.menu-wrapper { background: white; border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-lg); }
+.menu-topbar {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 18px 26px;
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+}
+.menu-topbar h2 { font-family: 'Noto Serif TC', serif; font-size: 17px; font-weight: 600; letter-spacing: 3px; }
+.menu-topbar .meta { font-size: 11px; color: #a09080; letter-spacing: 1px; }
+
+/* ── 表格 ── */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+thead th {
+  background: var(--paper-2);
+  color: var(--ink-2); font-weight: 600;
+  padding: 9px 10px; text-align: center;
+  font-size: 11px; letter-spacing: 1px;
+  border-bottom: 2px solid var(--paper-3);
+  position: sticky; top: 64px;
+}
+th:nth-child(1) { width: 42px; }
+th:nth-child(2) { width: 38px; }
+th:nth-child(3) { width: 16%; }
+th:nth-child(4) { width: 9%; }
+th:nth-child(5) { width: auto; }
+th:nth-child(6) { width: 13%; }
+
+/* ── 資料列：菜名 + 食材雙行 ── */
+tr.dish-row { border-bottom: none; }
+tr.ingr-row { border-bottom: 1px solid #f0e8de; }
+tr.dish-row td { padding: 7px 10px 2px; vertical-align: bottom; }
+tr.ingr-row td { padding: 0px 10px 6px; vertical-align: top; font-size: 10px; color: var(--ink-3); }
+tbody tr:hover td { background: #fdf5ec; }
+
+td.day-td { text-align: center; font-weight: 700; font-size: 13px; color: var(--ink); }
+td.wd-td  { text-align: center; font-size: 11px; color: var(--ink-2); }
+td.rice-td { text-align: center; font-size: 11px; color: var(--ink-2); }
+
+/* ── 特殊列 ── */
+tr.weekend-row td { background: #faf8f6 !important; color: #ccc; font-style: italic; }
+tr.holiday-row td { background: var(--gold-pale) !important; }
+tr.holiday-row .span-cell { color: var(--gold); font-weight: 500; text-align: center; font-size: 10px; letter-spacing: 1px; }
+tr.festival-row td { background: #fffde7 !important; }
+
+/* ── 可編輯格 ── */
+.editable { cursor: pointer; border-radius: 4px; padding: 2px 5px; margin: -2px -5px; transition: background .12s; display: block; width: calc(100% + 10px); }
+.editable:hover { background: var(--accent-pale); color: var(--accent); }
+input.edit-inp {
+  width: 100%; padding: 3px 7px;
+  border: 1.5px solid var(--accent);
+  border-radius: 4px; font-size: 12px;
+  font-family: 'Noto Sans TC', sans-serif;
+  background: white; color: var(--ink); outline: none;
+}
+
+/* ── 備注 ── */
+.menu-notes {
+  padding: 14px 26px;
+  background: var(--paper-2);
+  border-top: 1px solid var(--border);
+  font-size: 11px; color: var(--ink-2); line-height: 2;
+}
+
+/* ── 空狀態 ── */
+.empty { text-align: center; padding: 72px 24px; color: var(--ink-3); }
+.empty-icon { font-size: 52px; margin-bottom: 16px; opacity: .3; }
+.empty h3 { font-family: 'Noto Serif TC', serif; font-size: 19px; margin-bottom: 8px; color: var(--ink-2); }
+.empty p { font-size: 13px; }
+
+/* ── 列印樣式 ── */
+@media print {
+  .header, .panel, .btn-row, .status { display: none !important; }
+  .main { padding: 0; max-width: 100%; }
+  .menu-wrapper { border: none; box-shadow: none; border-radius: 0; }
+  .menu-topbar { background: #1a1612 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { background: white; }
+  table { font-size: 9.5px; }
+  tr.dish-row td { padding: 5px 8px 1px; }
+  tr.ingr-row td { padding: 0 8px 5px; font-size: 8px; }
+  .menu-notes { font-size: 9px; padding: 10px 18px; }
+  th { position: static !important; }
+}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-logo">雙全</div>
+  <div>
+    <h1>基隆市私立雙全幼兒園</h1>
+    <p>餐點表自動生成系統 · 113–115年菜單資料庫</p>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- 控制面板 -->
+  <div class="panel">
+    <div class="panel-title">生成設定</div>
+    <div class="ctrl-grid">
+      <div class="ctrl">
+        <label>年度</label>
+        <select id="selYear">
+          <option value="115">115年</option>
+          <option value="116">116年</option>
+          <option value="117">117年</option>
+          <option value="118">118年</option>
+        </select>
+      </div>
+      <div class="ctrl">
+        <label>月份</label>
+        <select id="selMonth">
+          <option value="1">01月</option><option value="2">02月</option><option value="3">03月</option>
+          <option value="4">04月</option><option value="5">05月</option><option value="6">06月</option>
+          <option value="7">07月</option><option value="8">08月</option><option value="9">09月</option>
+          <option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
+        </select>
+      </div>
+      <div class="ctrl">
+        <label>季節</label>
+        <select id="selSeason">
+          <option value="冬">冬季（11月～4月）</option>
+          <option value="夏">夏季（5月～10月）</option>
+        </select>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btnGenerate" onclick="generateMenu()">✦ 生成菜單</button>
+      <button class="btn btn-excel"   id="btnExcel"    onclick="exportExcel()" disabled>↓ 下載 Excel</button>
+      <button class="btn btn-ghost"   id="btnPrint"    onclick="window.print()" disabled>⊡ 列印</button>
+      <button class="btn btn-ghost"                    onclick="clearMenu()">清除</button>
+    </div>
+  </div>
+
+  <!-- 狀態列 -->
+  <div class="status" id="statusBar">
+    <div class="spinner" id="statusSpinner"></div>
+    <span id="statusText"></span>
+  </div>
+
+  <!-- 菜單輸出 -->
+  <div id="menuArea">
+    <div class="menu-wrapper">
+      <div class="empty">
+        <div class="empty-icon">🍱</div>
+        <h3>尚未生成菜單</h3>
+        <p>請選擇年度、月份與季節，點擊「生成菜單」開始</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ════════════════════════════════════════════
+//  菜單資料 (從 menu_data.json 載入)
+// ════════════════════════════════════════════
+let DB = null;
+
+async function loadData() {
+  if (DB) return DB;
+  // 嘗試載入外部 JSON，失敗則用內嵌備用資料
+  try {
+    const r = await fetch('./menu_data.json');
+    if (!r.ok) throw new Error();
+    DB = await r.json();
+  } catch {
+    // 內嵌最精簡備用（完整版從 menu_data.json 載入）
+    DB = FALLBACK_DATA;
+  }
+  return DB;
+}
+
+// ── 固定資料 ──
+const RICE_ALT = ['燕麥飯','糙米飯','紫米飯','地瓜飯','五穀飯','紅藜飯','薏仁飯'];
+const WDS = ['日','一','二','三','四','五','六'];
+
+const FESTIVALS = {
+  1:  [{week:4, lunch:'圍爐慶團圓火鍋大餐+時令水果',  ingr:'豬肉,魚丸,蔬菜,豆腐,年糕/時令水果'}],
+  8:  [{week:3, lunch:'中秋烤肉拼盤+月餅+時令水果',    ingr:'豬肉,雞翅,玉米,月餅/時令水果'}],
+  12: [{week:3, lunch:'冬至湯圓+時令水果',              ingr:'糯米,花生,芝麻,紅豆/時令水果'}],
+};
+
+// 115年國定假日
+const HOLIDAYS = {
+  '115/1/1':'元　旦　放　假　一　日',
+  '115/1/27':'農　曆　春　節　連　假','115/1/28':'農　曆　春　節　連　假',
+  '115/1/29':'農　曆　春　節　連　假','115/1/30':'農　曆　春　節　連　假',
+  '115/1/31':'農　曆　春　節　連　假',
+  '115/2/3':'農　曆　春　節　連　假','115/2/4':'農　曆　春　節　連　假',
+  '115/2/5':'農　曆　春　節　連　假','115/2/6':'農　曆　春　節　連　假',
+  '115/2/7':'農　曆　春　節　連　假',
+  '115/4/3':'清　明　節　連　假','115/4/4':'清　明　節　連　假',
+  '115/5/1':'勞　動　節　放　假','115/5/30':'端　午　節　放　假',
+  '115/10/1':'中　秋　節　放　假','115/10/10':'國　慶　日　放　假',
+};
+
+const INGR = {
+  "皮蛋瘦肉粥":"皮蛋,瘦肉,白米","廣東粥":"豬肉,香菇,白米","香菇鹹粥":"香菇,豬肉,白米",
+  "玉米蛋花粥":"玉米,雞蛋,白米","菜圃粥":"菜圃,豬肉,白米","高麗菜粥":"高麗菜,豬肉,白米",
+  "吻魚蛋花粥":"吻魚,雞蛋,白米","竹筍肉粥":"竹筍,豬肉,白米","芋頭鹹粥":"芋頭,豬肉,白米",
+  "玉米瘦肉粥":"玉米,豬肉,白米","台式鹹粥":"白米,香菇,豬肉","古早味鹹粥":"白米,豬肉,蝦米",
+  "竹筍絞肉粥":"竹筍,絞肉,白米","皮蛋絞肉粥":"皮蛋,絞肉,白米","香菇雞肉粥":"香菇,雞肉,白米",
+  "玉米鮪魚粥":"玉米,鮪魚,白米","莧菜肉絲粥":"莧菜,肉絲,白米","菜圃肉粥":"菜圃,豬肉,白米",
+  "滑蛋玉米粥":"雞蛋,玉米,白米","芋頭肉末粥":"芋頭,絞肉,白米","竹筍雞肉粥":"竹筍,雞肉,白米",
+  "竹筍排骨粥":"竹筍,排骨,白米","山藥雞肉粥":"山藥,雞肉,白米","吻仔魚玉米粥":"吻魚,玉米,白米",
+  "粗米粉湯":"米粉,豬肉,青菜","肉燥粿仔湯":"粿仔,肉燥,芹菜","魚丸米粉":"魚丸,米粉,芹菜",
+  "肉燥米苔目":"米苔目,肉燥,芹菜","金瓜米粉":"南瓜,米粉,豬肉","鮮蔬粄條":"粄條,青菜,豬肉",
+  "油蔥乾粄條":"粄條,油蔥,豬肉","客家湯粄條":"粄條,豬肉,芹菜","香香麵":"麵條,豬肉,青菜",
+  "陽春麵":"麵條,豬骨湯,青菜","雞絲麵":"麵條,雞蛋,青菜","鍋燒意麵":"意麵,豬肉,青菜",
+  "榨菜肉絲麵":"榨菜,肉絲,麵條","芹香肉燥冬粉":"冬粉,肉燥,芹菜","油豆腐細粉":"油豆腐,細粉,芹菜",
+  "香煎蘿蔔糕":"蘿蔔,糯米粉","高麗菜水餃":"高麗菜,豬肉,麵皮","鹹湯圓":"糯米,豬肉,芹菜",
+  "麻油蛋花麵線":"麵線,雞蛋,麻油","炒客家板條":"粄條,豬肉,韭黃","時蔬麵疙瘩":"麵粉,青菜,豬肉",
+  "粿仔湯":"粿仔,芹菜,豬肉","番茄蛋花麵":"番茄,雞蛋,麵條","麵線羹":"麵線,豬肉,香菇",
+  "鮮蔬湯麵":"麵條,青菜,豬骨湯","蔥油拌麵":"麵條,蔥,豬油","鍋燒冬粉":"冬粉,豬肉,青菜",
+  "菜頭滷":"蘿蔔,醬油,豬肉","家常米苔目":"米苔目,油蔥,豬肉","鮮蔬雲吞":"餛飩皮,豬肉,青菜",
+  "番茄刀削麵":"番茄,刀削麵,豬肉","綜合菇菇麵":"香菇,麵條,青菜","油豆腐米粉湯":"油豆腐,米粉,芹菜",
+  "味增拉麵":"拉麵,味噌,豬肉","蘿蔔糕湯":"蘿蔔,糯米粉,芹菜","芹菜米苔目湯":"米苔目,芹菜,豬肉",
+  "日式關東煮":"蘿蔔,豆腐,貢丸","客家鹹湯圓":"糯米,豬肉,韭菜","紅豆蓮子湯":"紅豆,蓮子",
+  "紅豆湯圓":"紅豆,糯米","珍珠豆花":"豆花,粉圓","綠豆薏仁湯":"綠豆,薏仁",
+  "仙草奶凍":"仙草,鮮奶","冬瓜檸檬愛玉":"愛玉,冬瓜,檸檬","黑糖豆花":"豆花,黑糖",
+  "地瓜Q圓":"地瓜,糯米粉","蒸蛋布丁":"雞蛋,牛奶","珍珠仙草蜜":"仙草,粉圓,蜂蜜",
+  "地瓜芋園":"地瓜,芋頭,糯米粉","紫米薏仁湯":"紫米,薏仁","薑汁地瓜圓":"地瓜,薑,糯米粉",
+  "燒賣":"豬肉,麵皮,玉米","肉包":"絞肉,麵粉","蔥麵包":"麵粉,蔥花",
+  "波羅麵包":"麵粉,奶油","小甜包＋豆漿":"麵粉,豆漿","銀絲卷+豆漿":"麵粉,豆漿",
+  "果醬吐司+鮮奶":"吐司,果醬,鮮奶","高麗菜水煎包":"高麗菜,豬肉,麵皮","蛋餅":"雞蛋,麵粉,蔥",
+  "小肉包":"絞肉,麵粉","熱狗麵包":"麵粉,熱狗","草莓果醬吐司":"吐司,草莓果醬","三色小饅頭":"麵粉",
+  "香菇蒸肉+芹香豆包+青菜+冬瓜排骨湯+時令水果":"香菇,豬肉,豆包,芹菜,冬瓜,排骨/時令水果",
+  "梅干肉燥+玉米炒蛋+青菜+蘿蔔貢丸湯+時令水果":"梅干菜,豬肉,玉米,雞蛋,蘿蔔,貢丸/時令水果",
+  "杏鮑菇燒肉+洋蔥炒蛋+青菜+冬瓜排骨湯+時令水果":"杏鮑菇,豬肉,洋蔥,雞蛋,冬瓜,排骨/時令水果",
+  "海帶燒肉+玉米炒蛋+青菜+蘿蔔貢丸湯+時令水果":"海帶,豬肉,玉米,雞蛋,蘿蔔,貢丸/時令水果",
+  "宮保雞丁+醬燒板豆腐+青菜+鮮菇蛋花湯+時令水果":"雞肉,豆腐,花生,香菇,雞蛋/時令水果",
+  "蘑菇蔥燒雞丁+炒海帶絲+青菜+芹香貢丸湯+時令水果":"蘑菇,雞肉,海帶,芹菜,貢丸/時令水果",
+  "瓜仔肉+蔥燒豆腐+青菜+黃豆芽排骨湯+時令水果":"瓜仔,豬肉,豆腐,黃豆芽,排骨/時令水果",
+  "竹筍肉燥+照燒豆腐+青菜+香菇雞湯+時令水果":"竹筍,豬肉,豆腐,香菇,雞肉/時令水果",
+  "五香肉燥+鐵板豆腐+青菜+冬瓜排骨湯+時令水果":"豬肉,豆腐,五香,冬瓜,排骨/時令水果",
+  "蘿蔔滷肉+小黃瓜炒竹輪+青菜+紫菜蛋花湯+時令水果":"蘿蔔,豬肉,竹輪,黃瓜,紫菜,雞蛋/時令水果",
+  "古早味肉燥+菜圃蛋+青菜+冬瓜貢丸湯+時令水果":"豬肉,菜圃,雞蛋,冬瓜,貢丸/時令水果",
+  "豆干肉燥+洋蔥炒蛋+青菜+黃豆芽排骨湯+時令水果":"豆干,豬肉,洋蔥,雞蛋,黃豆芽,排骨/時令水果",
+  "毛豆蒸肉+竹輪炒大黃瓜+青菜+香菇雞湯+時令水果":"毛豆,豬肉,竹輪,大黃瓜,香菇,雞肉/時令水果",
+  "絞肉煨豆腐+炒干絲+青菜+魷魚羹湯+時令水果":"絞肉,豆腐,干絲,魷魚/時令水果",
+  "打拋豬+醬燒油豆腐+青菜+芹香貢丸湯+時令水果":"豬肉,油豆腐,九層塔,芹菜,貢丸/時令水果",
+  "客家小炒+甜不辣炒黃瓜+青菜+番茄蛋花湯+時令水果":"豬肉,豆干,甜不辣,黃瓜,番茄,雞蛋/時令水果",
+  "梅干肉燥+芹香豆包+青菜+紫菜蛋花湯+時令水果":"梅干菜,豬肉,豆包,芹菜,紫菜,雞蛋/時令水果",
+  "圍爐慶團圓火鍋大餐+時令水果":"豬肉,魚丸,蔬菜,豆腐,年糕/時令水果",
+  "中秋烤肉拼盤+月餅+時令水果":"豬肉,雞翅,玉米,月餅/時令水果",
+  "冬至湯圓+時令水果":"糯米,花生,芝麻,紅豆/時令水果",
+  "高麗菜肉絲炒麵+薑絲蛤蠣湯+時令水果":"高麗菜,豬肉,麵條,薑,蛤蠣/時令水果",
+  "什錦大滷麵+時令水果":"麵條,豬肉,香菇,黑木耳,雞蛋/時令水果",
+  "什錦烏龍麵+時令水果":"烏龍麵,豬肉,香菇,青菜/時令水果",
+  "台式什錦炒烏龍+冬瓜蛤蠣湯+時令水果":"烏龍麵,豬肉,蛤蠣,冬瓜/時令水果",
+  "高麗菜沙茶豬柳燴飯+時令水果":"高麗菜,豬肉,沙茶醬,白米/時令水果",
+  "咖哩洋芋雞丁燴飯+時令水果":"咖哩,馬鈴薯,雞肉,白米/時令水果",
+  "什錦滑蛋肉羹燴飯+時令水果":"豬肉羹,雞蛋,白米,香菇/時令水果",
+  "玉米雞丁蔬菜蛋炒飯+味增豆腐湯+時令水果":"玉米,雞肉,雞蛋,白米,豆腐,味噌/時令水果",
+  "夏威夷什錦蛋炒飯+薑絲蛤蠣湯+時令水果":"鳳梨,火腿,雞蛋,白米,蛤蠣,薑/時令水果",
+  "日式什錦湯烏龍+時令水果":"烏龍麵,豬肉,香菇,青菜/時令水果",
+  "奶油培根蔬菜烏龍麵+玉米濃湯+時令水果":"烏龍麵,培根,玉米,鮮奶/時令水果",
+  "台式高麗菜肉絲炒麵+冬瓜蛤蠣湯+時令水果":"高麗菜,豬肉,麵條,蛤蠣,冬瓜/時令水果",
+  "時蔬肉燥炒烏龍+鮮蔬蛋花湯+時令水果":"烏龍麵,肉燥,青菜,雞蛋/時令水果",
+  "三色豆蝦仁蛋炒飯+味增豆腐湯+時令水果":"青豆,玉米,紅蘿蔔,蝦仁,雞蛋,白米/時令水果",
+  "鮮蔬滑蛋什錦湯烏龍+時令水果":"烏龍麵,雞蛋,青菜,豬肉/時令水果",
+  "紅醬培根蔬菜義大利麵+玉米濃湯+時令水果":"義大利麵,培根,番茄,玉米/時令水果",
+  "照燒豬柳什錦燴飯+時令水果":"豬肉,照燒醬,白米,青菜/時令水果",
+  "味增豆腐豬肉烏龍湯麵+時令水果":"烏龍麵,豬肉,豆腐,味噌/時令水果",
+  "沙茶豬柳什錦燴飯+時令水果":"豬肉,沙茶醬,白米,青菜/時令水果",
+  "奶香白醬培根義大利麵+玉米濃湯+時令水果":"義大利麵,培根,鮮奶,玉米/時令水果",
+  "沙茶肉羹麵+滷蛋+時令水果":"麵條,豬肉羹,沙茶,滷蛋/時令水果",
+  "培根奶油通心麵+玉米濃湯+時令水果":"通心麵,培根,奶油,玉米/時令水果",
+};
+
+// ── 備用資料（當 menu_data.json 載入失敗時使用） ──
+const FALLBACK_DATA = {
+  MORNING_PORRIDGE:["皮蛋瘦肉粥","廣東粥","香菇鹹粥","玉米蛋花粥","菜圃粥","高麗菜粥","吻魚蛋花粥","竹筍肉粥","芋頭鹹粥","玉米瘦肉粥","台式鹹粥","古早味鹹粥","竹筍絞肉粥","皮蛋絞肉粥","香菇雞肉粥","玉米鮪魚粥","莧菜肉絲粥","滑蛋玉米粥","芋頭肉末粥","竹筍雞肉粥"],
+  MORNING_NOODLE:["粗米粉湯","肉燥粿仔湯","魚丸米粉","肉燥米苔目","金瓜米粉","鮮蔬粄條","油蔥乾粄條","客家湯粄條","香香麵","陽春麵","雞絲麵","鍋燒意麵","榨菜肉絲麵","芹香肉燥冬粉","油豆腐細粉","香煎蘿蔔糕","高麗菜水餃","鹹湯圓","麻油蛋花麵線","炒客家板條","時蔬麵疙瘩","粿仔湯","番茄蛋花麵","麵線羹","鮮蔬湯麵","蔥油拌麵","鍋燒冬粉","菜頭滷"],
+  LUNCH_RICE:["香菇蒸肉+芹香豆包+青菜+冬瓜排骨湯+時令水果","梅干肉燥+玉米炒蛋+青菜+蘿蔔貢丸湯+時令水果","杏鮑菇燒肉+洋蔥炒蛋+青菜+冬瓜排骨湯+時令水果","海帶燒肉+玉米炒蛋+青菜+蘿蔔貢丸湯+時令水果","宮保雞丁+醬燒板豆腐+青菜+鮮菇蛋花湯+時令水果","蘑菇蔥燒雞丁+炒海帶絲+青菜+芹香貢丸湯+時令水果","瓜仔肉+蔥燒豆腐+青菜+黃豆芽排骨湯+時令水果","竹筍肉燥+照燒豆腐+青菜+香菇雞湯+時令水果","五香肉燥+鐵板豆腐+青菜+冬瓜排骨湯+時令水果","蘿蔔滷肉+小黃瓜炒竹輪+青菜+紫菜蛋花湯+時令水果","古早味肉燥+菜圃蛋+青菜+冬瓜貢丸湯+時令水果","豆干肉燥+洋蔥炒蛋+青菜+黃豆芽排骨湯+時令水果","毛豆蒸肉+竹輪炒大黃瓜+青菜+香菇雞湯+時令水果","絞肉煨豆腐+炒干絲+青菜+魷魚羹湯+時令水果","打拋豬+醬燒油豆腐+青菜+芹香貢丸湯+時令水果","客家小炒+甜不辣炒黃瓜+青菜+番茄蛋花湯+時令水果","梅干肉燥+芹香豆包+青菜+紫菜蛋花湯+時令水果"],
+  LUNCH_NOODLE:["高麗菜肉絲炒麵+薑絲蛤蠣湯+時令水果","什錦大滷麵+時令水果","什錦烏龍麵+時令水果","台式什錦炒烏龍+冬瓜蛤蠣湯+時令水果","高麗菜沙茶豬柳燴飯+時令水果","咖哩洋芋雞丁燴飯+時令水果","什錦滑蛋肉羹燴飯+時令水果","玉米雞丁蔬菜蛋炒飯+味增豆腐湯+時令水果","夏威夷什錦蛋炒飯+薑絲蛤蠣湯+時令水果","日式什錦湯烏龍+時令水果","奶油培根蔬菜烏龍麵+玉米濃湯+時令水果","台式高麗菜肉絲炒麵+冬瓜蛤蠣湯+時令水果","時蔬肉燥炒烏龍+鮮蔬蛋花湯+時令水果","三色豆蝦仁蛋炒飯+味增豆腐湯+時令水果","紅醬培根蔬菜義大利麵+玉米濃湯+時令水果","照燒豬柳什錦燴飯+時令水果","味增豆腐豬肉烏龍湯麵+時令水果"],
+  AFT_SWEET_HOT:["日式關東煮","客家鹹湯圓","紅豆蓮子湯","紅豆湯圓","綠豆薏仁湯","地瓜芋園","紫米薏仁湯","白木耳薏仁","芋頭米粉湯","薑汁地瓜湯"],
+  AFT_SWEET_COLD:["冬瓜檸檬愛玉","仙草奶凍","珍珠豆花","黑糖豆花","地瓜Q圓","蒸蛋布丁","珍珠仙草蜜","薑汁地瓜圓","綠豆薏仁湯"],
+  AFT_SAVORY:["銀魚莧菜羹","玉米蛋花羹","鮮蔬吻魚蛋羹","白菜豆腐羹","魚丸麵線羹","番茄蛋花粄條","油蔥醬拌粄條","鍋燒冬粉","米粉湯","肉燥麵疙瘩","菇菇麵","陽春湯麵","雞絲麵","蠔油冬粉煲","火腿玉米濃湯","鮮蔬玉米濃湯","鮮蔬雲吞"],
+  AFT_BREAD:["燒賣","肉包","蔥麵包","波羅麵包","小甜包＋豆漿","銀絲卷+豆漿","果醬吐司+鮮奶","高麗菜水煎包","蛋餅","小肉包","草莓果醬吐司","熱狗麵包"],
+};
+
+// ════════════════════════════════════════════
+//  菜單生成邏輯
+// ════════════════════════════════════════════
+function seededShuffle(arr, seed) {
+  arr = [...arr];
+  for (let i = arr.length - 1; i > 0; i--) {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    const j = seed % (i + 1);
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function getDaysInMonth(y, m) {
+  return new Date(y, m, 0).getDate();
+}
+
+function wdTW(y, m, d) {
+  return new Date(y, m - 1, d).getDay(); // 0=Sun
+}
+
+function generateRows(year, month, season, data) {
+  const seed = year * 10000 + month * 17 + (Date.now() % 99991);
+  const isSummer = season === '夏';
+  const days = getDaysInMonth(year, month);
+
+  const mp  = seededShuffle(data.MORNING_PORRIDGE, seed);
+  const mn  = seededShuffle(data.MORNING_NOODLE,   seed+1);
+  const lr  = seededShuffle(data.LUNCH_RICE,       seed+2);
+  const ln  = seededShuffle(data.LUNCH_NOODLE,     seed+3);
+  const asw = seededShuffle(isSummer ? data.AFT_SWEET_COLD : data.AFT_SWEET_HOT, seed+4);
+  const asv = seededShuffle(data.AFT_SAVORY,       seed+5);
+  const ab  = seededShuffle(data.AFT_BREAD,        seed+6);
+
+  let pi=0, ni=0, lri=0, lni=0, si=0, svi=0, bi=0;
+  const fests = (FESTIVALS[month] || []).map(f => ({...f}));
+  const rows = [];
+
+  for (let d = 1; d <= days; d++) {
+    const wd  = wdTW(year, month, d);
+    const wdc = WDS[wd];
+    const hKey = `${year}/${month}/${d}`;
+    const holiday = HOLIDAYS[hKey];
+
+    if (wd === 0 || wd === 6) { rows.push({d, wd:wdc, type:'weekend'}); continue; }
+    if (holiday)               { rows.push({d, wd:wdc, type:'holiday', note:holiday}); continue; }
+
+    const morning = (wdc==='二'||wdc==='四') ? mp[pi++%mp.length] : mn[ni++%mn.length];
+    const rice    = (wdc==='二'||wdc==='五') ? '———'
+                  : (wdc==='四') ? RICE_ALT[((Math.floor((d-1)/5))+seed)%RICE_ALT.length]
+                  : (wdc==='三') ? '地瓜飯' : '白米飯';
+
+    const wk   = Math.floor((d-1)/7)+1;
+    const fest = fests.find(f => f.week===wk && !f._used);
+    let lunch, lIngr, isFest=false;
+    if (fest && wdc!=='二' && wdc!=='五') {
+      lunch=fest.lunch; lIngr=fest.ingr; isFest=true; fest._used=true;
+    } else if (wdc==='二'||wdc==='五') {
+      lunch=ln[lni++%ln.length]; lIngr=INGR[lunch]||'';
+    } else {
+      lunch=lr[lri++%lr.length]; lIngr=INGR[lunch]||'';
+    }
+
+    let aft;
+    if      (wdc==='五')                       { aft=ab[bi++%ab.length]; }
+    else if (isSummer&&(wdc==='二'||wdc==='四')){ aft=asw[si++%asw.length]; }
+    else if (!isSummer&&wdc==='四')             { aft=asw[si++%asw.length]; }
+    else                                        { aft=asv[svi++%asv.length]; }
+
+    rows.push({d, wd:wdc, type:isFest?'festival':'normal',
+      morning, morningIngr:INGR[morning]||'',
+      rice, lunch, lunchIngr:lIngr,
+      afternoon:aft, aftIngr:INGR[aft]||''});
+  }
+  return rows;
+}
+
+// ════════════════════════════════════════════
+//  UI 控制
+// ════════════════════════════════════════════
+let currentRows=null, currentYear, currentMonth, currentSeason;
+
+function setStatus(msg, type) {
+  const bar=document.getElementById('statusBar');
+  const txt=document.getElementById('statusText');
+  const spn=document.getElementById('statusSpinner');
+  if (!msg) { bar.className='status'; return; }
+  bar.className=`status show status-${type}`;
+  txt.textContent=msg;
+  spn.style.display=(type==='loading')?'block':'none';
+}
+
+async function generateMenu() {
+  const year   = parseInt(document.getElementById('selYear').value);
+  const month  = parseInt(document.getElementById('selMonth').value);
+  const season = document.getElementById('selSeason').value;
+  currentYear=year; currentMonth=month; currentSeason=season;
+
+  setStatus('生成菜單中…', 'loading');
+  document.getElementById('btnExcel').disabled=true;
+  document.getElementById('btnPrint').disabled=true;
+  document.getElementById('menuArea').innerHTML=`<div class="menu-wrapper"><div class="empty"><div class="spinner" style="width:32px;height:32px;margin:0 auto 16px;border-width:3px;border-color:#ddd;border-top-color:var(--accent)"></div><p style="color:var(--ink-3)">生成中…</p></div></div>`;
+
+  await new Promise(r=>setTimeout(r,50));
+
+  try {
+    const data = await loadData();
+    const rows = generateRows(year, month, season, data);
+    currentRows=rows;
+    renderMenu(rows, year, month, season);
+    document.getElementById('btnExcel').disabled=false;
+    document.getElementById('btnPrint').disabled=false;
+    const sd=rows.filter(r=>r.type==='normal'||r.type==='festival').length;
+    setStatus(`✓ ${year}年${String(month).padStart(2,'0')}月菜單生成完成，共 ${sd} 個上課日`, 'success');
+    setTimeout(()=>setStatus('',''),5000);
+  } catch(e) {
+    setStatus('生成失敗，請重試', 'error');
+    console.error(e);
+  }
+}
+
+function renderMenu(rows, year, month, season) {
+  const mm=String(month).padStart(2,'0');
+  const sd=rows.filter(r=>['normal','festival'].includes(r.type)).length;
+
+  let html=`<div class="menu-wrapper">
+    <div class="menu-topbar">
+      <h2>基隆市私立雙全幼兒園　${year}年${mm}月餐點表</h2>
+      <span class="meta">${season}季 ‧ 上課日 ${sd} 天</span>
+    </div>
+    <div class="table-wrap"><table>
+    <thead><tr>
+      <th>日期</th><th>星期</th><th>上午點心</th><th>主食</th><th>營養午餐</th><th>下午點心</th>
+    </tr></thead><tbody>`;
+
+  rows.forEach((row, idx) => {
+    if (row.type==='weekend') {
+      html+=`<tr class="weekend-row dish-row">
+        <td class="day-td">${row.d}</td>
+        <td class="wd-td">${row.wd}</td>
+        <td colspan="4" style="text-align:center;letter-spacing:4px;font-size:10px">周　休　二　日</td>
+      </tr>`;
+    } else if (row.type==='holiday') {
+      html+=`<tr class="holiday-row dish-row">
+        <td class="day-td">${row.d}</td>
+        <td class="wd-td">${row.wd}</td>
+        <td class="span-cell" colspan="4">${row.note}</td>
+      </tr>`;
+    } else {
+      const cls=row.type==='festival'?'festival-row':'';
+      html+=`
+      <tr class="dish-row ${cls}">
+        <td class="day-td" rowspan="2" style="border-bottom:none;vertical-align:middle">${row.d}</td>
+        <td class="wd-td" rowspan="2" style="border-bottom:none;vertical-align:middle">${row.wd}</td>
+        <td><span class="editable" onclick="editCell(this,${idx},'morning')">${row.morning}</span></td>
+        <td class="rice-td" rowspan="2" style="border-bottom:none;vertical-align:middle">${row.rice}</td>
+        <td><span class="editable" onclick="editCell(this,${idx},'lunch')">${row.lunch}</span></td>
+        <td><span class="editable" onclick="editCell(this,${idx},'afternoon')">${row.afternoon}</span></td>
+      </tr>
+      <tr class="ingr-row ${cls}">
+        <td id="ig-m-${idx}" style="color:var(--ink-3)">${row.morningIngr||''}</td>
+        <td id="ig-l-${idx}" style="color:var(--ink-3)">${row.lunchIngr||''}</td>
+        <td id="ig-a-${idx}" style="color:var(--ink-3)">${row.aftIngr||''}</td>
+      </tr>`;
+    }
+  });
+
+  html+=`</tbody></table></div>
+    <div class="menu-notes">
+      ＊每日安排季節青菜及水果，希望幼童養成天天飲食蔬果的好習慣。<br>
+      ＊若寶貝身體不適，可預先告知，我們將另外為寶貝準備餐點。<br>
+      ＊若遇天氣…等不可抗因素影響菜品新鮮度及數量，菜單將會依實際情況做滾動式修正。<br>
+      ＊以上餐點提供四大類食物，每週至少使用一次雜糧、根莖類取代精緻穀類。<br>
+      ＊本園一律使用國產豬肉食材，蛋品皆使用國產台灣蛋非加工液蛋。
+    </div>
+  </div>`;
+
+  document.getElementById('menuArea').innerHTML=html;
+}
+
+function editCell(span, idx, field) {
+  const cur=span.textContent;
+  const inp=document.createElement('input');
+  inp.type='text'; inp.value=cur; inp.className='edit-inp';
+  span.replaceWith(inp); inp.focus(); inp.select();
+  const save=()=>{
+    const v=inp.value.trim()||cur;
+    if(currentRows&&currentRows[idx]){
+      currentRows[idx][field]=v;
+      const igMap={morning:'morningIngr',lunch:'lunchIngr',afternoon:'aftIngr'};
+      const idMap={morning:`ig-m-${idx}`,lunch:`ig-l-${idx}`,afternoon:`ig-a-${idx}`};
+      currentRows[idx][igMap[field]]=INGR[v]||currentRows[idx][igMap[field]]||'';
+      const el=document.getElementById(idMap[field]);
+      if(el) el.textContent=currentRows[idx][igMap[field]];
+    }
+    const ns=document.createElement('span');
+    ns.className='editable'; ns.textContent=v;
+    ns.onclick=()=>editCell(ns,idx,field);
+    inp.replaceWith(ns);
+  };
+  inp.addEventListener('blur',save);
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){e.preventDefault();save();}
+    if(e.key==='Escape'){
+      const ns=document.createElement('span');ns.className='editable';ns.textContent=cur;
+      ns.onclick=()=>editCell(ns,idx,field);inp.replaceWith(ns);
+    }
+  });
+}
+
+function clearMenu(){
+  currentRows=null;
+  document.getElementById('menuArea').innerHTML=`<div class="menu-wrapper"><div class="empty"><div class="empty-icon">🍱</div><h3>尚未生成菜單</h3><p>請選擇年度、月份與季節，點擊「生成菜單」開始</p></div></div>`;
+  document.getElementById('btnExcel').disabled=true;
+  document.getElementById('btnPrint').disabled=true;
+  setStatus('','');
+}
+
+// ════════════════════════════════════════════
+//  Excel 匯出 (SheetJS)
+// ════════════════════════════════════════════
+function exportExcel(){
+  if(!currentRows){alert('請先生成菜單');return;}
+  setStatus('正在生成 Excel 檔案…','loading');
+
+  const mm=String(currentMonth).padStart(2,'0');
+  const wb=XLSX.utils.book_new();
+  const wsData=[];
+
+  // 標題
+  wsData.push([`基隆市私立雙全幼兒園　${currentYear}年${mm}月餐點表`,'','','','','']);
+  // 欄位標題
+  wsData.push(['日期','星期','上午點心','主食','營養午餐','下午點心']);
+
+  currentRows.forEach(row=>{
+    if(row.type==='weekend'){
+      wsData.push([row.d, row.wd, '周　休　二　日','','','']);
+    } else if(row.type==='holiday'){
+      wsData.push([row.d, row.wd, row.note.replace(/　/g,''),'','','']);
+    } else {
+      wsData.push([row.d, row.wd, row.morning, row.rice, row.lunch, row.afternoon]);
+      wsData.push(['','',row.morningIngr||'','',row.lunchIngr||'',row.aftIngr||'']);
+    }
+  });
+
+  // 備注
+  wsData.push(['']);
+  wsData.push(['＊每日安排季節青菜及水果，希望幼童養成天天飲食蔬果的好習慣。']);
+  wsData.push(['＊若寶貝身體不適，可預先告知，我們將另外為寶貝準備餐點。']);
+  wsData.push(['＊若遇天氣…等不可抗因素影響菜品新鮮度及數量，菜單將會依實際情況做滾動式修正。']);
+  wsData.push(['＊以上餐點提供四大類食物，每週至少使用一次雜糧、根莖類取代精緻穀類。']);
+  wsData.push(['＊本園一律使用國產豬肉食材，蛋品皆使用國產台灣蛋非加工液蛋。']);
+
+  const ws=XLSX.utils.aoa_to_sheet(wsData);
+
+  // 欄寬
+  ws['!cols']=[{wch:6},{wch:5},{wch:22},{wch:10},{wch:52},{wch:18}];
+
+  // 合併標題列
+  ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:5}}];
+
+  XLSX.utils.book_append_sheet(wb, ws, `${currentYear}年${mm}月`);
+  XLSX.writeFile(wb,`雙全幼兒園_${currentYear}年${mm}月餐點表.xlsx`);
+
+  setStatus('✓ Excel 下載完成！','success');
+  setTimeout(()=>setStatus('',''),4000);
+}
+
+// ── 初始化：自動設定目前月份與季節 ──
+(function init(){
+  const now=new Date();
+  const m=now.getMonth()+1;
+  document.getElementById('selMonth').value=m;
+  document.getElementById('selSeason').value=(m>=5&&m<=10)?'夏':'冬';
+})();
+</script>
+</body>
+</html>
