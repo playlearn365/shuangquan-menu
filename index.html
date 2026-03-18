@@ -144,12 +144,15 @@ select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── 菜單包裝 ── */
-.menu-wrapper { background: white; border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-lg); }
+.menu-wrapper { background: white; border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: visible; box-shadow: var(--shadow-lg); }
+.table-wrap { border-radius: 0 0 var(--radius-lg) var(--radius-lg); overflow: hidden; }
 .menu-topbar {
   background: var(--ink);
   color: var(--paper);
   padding: 18px 26px;
   display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+  position: sticky; top: 64px; z-index: 11;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 .menu-topbar h2 { font-family: 'Noto Serif TC', serif; font-size: 17px; font-weight: 600; letter-spacing: 3px; }
 .menu-topbar .meta { font-size: 11px; color: #a09080; letter-spacing: 1px; }
@@ -163,7 +166,7 @@ thead th {
   padding: 9px 10px; text-align: center;
   font-size: 11px; letter-spacing: 1px;
   border-bottom: 2px solid var(--paper-3);
-  position: sticky; top: 64px;
+  position: sticky; top: 121px; z-index: 10;
 }
 th:nth-child(1) { width: 42px; }
 th:nth-child(2) { width: 38px; }
